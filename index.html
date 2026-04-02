@@ -28,7 +28,6 @@
         #p-wrap { width: 160px; height: 6px; background: rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
         #p-bar { width: 0%; height: 100%; transition: 0.3s; }
 
-        /* Золотая анимация */
         .gold-pop {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: #FFD700; font-size: 60px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 1), 0 0 20px rgba(255, 165, 0, 0.8), 2px 2px 0px #fff;
@@ -41,7 +40,6 @@
             100% { opacity: 0; transform: translate(calc(45vw - 50%), calc(-45vh - 50%)) scale(0.5); }
         }
 
-        /* Карточки */
         .card {
             position: absolute; background-repeat: no-repeat; background-position: center; display: flex; align-items: center; justify-content: center;
             cursor: pointer; box-sizing: border-box; transition: filter .3s, transform .2s; background-color: transparent; border: none;
@@ -52,7 +50,6 @@
         .card.good { filter: drop-shadow(0 0 15px rgba(52,199,89,0.9)); }
         @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
 
-        /* Окна */
         .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2000; background: rgba(0,0,0,0.2); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
         .glass-box { background: rgba(255,255,255,0.85); padding: 30px; border-radius: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.5); text-align: center; max-width: 300px; width: 80%; animation: pop 0.4s cubic-bezier(0.17, 0.89, 0.32, 1.27); }
         @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -66,24 +63,9 @@
 </head>
 <body>
     <div id="ui">
-        <div class="ui-group ui-left">
-            <div id="timer-box" class="glass-tag" style="display:none;">
-                <img id="icon-time" class="ui-icon">
-                <span id="timer-val">00:00</span>
-            </div>
-        </div>
-        
-        <div class="ui-group ui-center">
-            <div id="lives"></div>
-            <div id="p-wrap"><div id="p-bar"></div></div>
-        </div>
-        
-        <div class="ui-group ui-right">
-            <div id="score-box" class="glass-tag">
-                <img id="icon-score" class="ui-icon">
-                <span id="score-val">0</span>
-            </div>
-        </div>
+        <div class="ui-group ui-left"><div id="timer-box" class="glass-tag" style="display:none;"><img id="icon-time" class="ui-icon"><span id="timer-val">00:00</span></div></div>
+        <div class="ui-group ui-center"><div id="lives"></div><div id="p-wrap"><div id="p-bar"></div></div></div>
+        <div class="ui-group ui-right"><div id="score-box" class="glass-tag"><img id="icon-score" class="ui-icon"><span id="score-val">0</span></div></div>
     </div>
 
     <div id="game"></div><img id="fb">
@@ -135,7 +117,6 @@
     const pColor = get('pcolor', '#007aff');
     document.querySelectorAll('.btn-ios, #p-bar').forEach(el => el.style.background = pColor);
     
-    // Тексты
     document.getElementById('st-t').innerText = get('st_t', 'Найди пары'); document.getElementById('st-d').innerText = get('st_d', 'Успехов!'); document.getElementById('st-b').innerText = get('st_b', 'ИГРАТЬ');
     document.getElementById('to-t').innerText = get('to_t', 'Время вышло!'); document.getElementById('to-d').innerText = get('to_d', 'Но ты можешь закончить.'); document.getElementById('to-b').innerText = 'ПРОДОЛЖИТЬ';
     document.getElementById('to-img').src = get('to_i') || DEFAULTS.toImg;
@@ -223,13 +204,10 @@
         const bounds0 = getBounds();
         deck.forEach(item => {
             const el = document.createElement('div'); el.className = `card ${get('effect','')}`;
-            
-            // Сохраняем данные для проверки
             el.dataset.t = item.t;
             el.dataset.dest = item.dest || '';
 
             if (!finalBg) el.classList.add('filter-shadow');
-       
             const isImg = String(item.t).startsWith('http');
             
             let s = `width:${cSize}px; height:${cSize}px; font-size:${get('fsize','28px')}; color:${get('fcolor','#333')};`;
@@ -253,49 +231,45 @@
                         const [s1, s2] = selected, fb = document.getElementById('fb');
                         inputBlocked = true; 
                         
-                        // === СУПЕР МАТЕМАТИЧЕСКАЯ ПРОВЕРКА V34 (FINAL) ===
-                        let isMatch = false;
+                        // НОРМАЛИЗАТОР АНГЛИЙСКИХ/РУССКИХ БУКВ
+                        const norm = (str) => {
+                            if (str == null) return '';
+                            const map = {'a':'а', 'c':'с', 'e':'е', 'o':'о', 'p':'р', 'x':'х', 'y':'у', 'm':'м', 'k':'к', 't':'т', 'b':'в', 'h':'н'};
+                            return String(str).toLowerCase().trim().replace(/[aceopxymktbh]/g, m => map[m] || m);
+                        };
 
                         const tryMath = (val) => {
                             if (!val || typeof val !== 'string') return val;
-                            // 1. Нормализация тире и пробелов
                             let clean = val.replace(/[–—−]/g, '-').trim();
-                            // 2. Замена x на * и : на /
-                            clean = clean.replace(/x/g, '*').replace(/:/g, '/');
-                            // 3. Удаляем всё лишнее
+                            clean = clean.replace(/[xхXХ]/g, '*').replace(/:/g, '/');
                             clean = clean.replace(/[^0-9\+\-\*\/\.\(\)]/g, '');
                             if (clean.length === 0) return val;
-                            try {
-                                return new Function('return ' + clean)();
-                            } catch(e) { return val; }
+                            try { return new Function('return ' + clean)(); } catch(e) { return val; }
                         };
+
+                        let isMatch = false;
+                        const t1_raw = String(s1.t).trim();
+                        const t2_raw = String(s2.t).trim();
+                        const t1 = norm(t1_raw);
+                        const t2 = norm(t2_raw);
+                        const d1 = s1.dest ? norm(s1.dest) : null;
+                        const d2 = s2.dest ? norm(s2.dest) : null;
                         
-                        // Получаем "чистые" значения
-                        const t1 = String(s1.t).trim();
-                        const t2 = String(s2.t).trim();
-                        const d1 = s1.dest ? String(s1.dest).trim() : null;
-                        const d2 = s2.dest ? String(s2.dest).trim() : null;
-                        
-                        // 1. Проверка по ID (базовая)
                         if (s1.id === s2.id && s1.id !== -100) {
                             isMatch = true;
                         } 
-                        // 2. Проверка по прямому назначению
                         else if (d1 === t2 || d2 === t1) {
                             isMatch = true;
                         }
-                        // 3. УМНАЯ КРОСС-ПРОВЕРКА (НОВОЕ)
-                        // Смотрим, есть ли такая пара текстов в массиве всех активных пар
-                        else if (active.some(p => 
-                            (String(p.a).trim() === t1 && String(p.b).trim() === t2) || 
-                            (String(p.a).trim() === t2 && String(p.b).trim() === t1)
+                        else if (allData.some(p => 
+                            (norm(p.a) === t1 && norm(p.b) === t2) || 
+                            (norm(p.a) === t2 && norm(p.b) === t1)
                         )) {
                             isMatch = true;
                         }
-                        // 4. Математика (как запасной вариант)
                         else {
-                            const m1 = tryMath(t1);
-                            const m2 = tryMath(t2);
+                            const m1 = tryMath(t1_raw);
+                            const m2 = tryMath(t2_raw);
                             if (m1 != null && m2 != null && m1 == m2) isMatch = true;
                         }
 
@@ -307,7 +281,6 @@
                             setTimeout(() => {
                                 selected.forEach(s => { s.el.style.display = 'none'; s.el.dataset.done = '1'; s.el.classList.remove('sel'); });
                                 selected = []; inputBlocked = false;
-                                
                                 if (found === active.length) { 
                                     clearInterval(timerInterval);
                                     playSound('win.mp3');
